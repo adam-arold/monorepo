@@ -8,6 +8,7 @@ import * as lodash from 'lodash';
 import * as moment from 'moment';
 import { Model } from 'mongoose';
 import { Command, Console, createSpinner } from 'nestjs-console';
+import { StakingService } from 'src/staking/staking.service';
 import * as erc20 from './abis/erc20.json';
 import * as erc20byte32 from './abis/erc20byte32.json';
 import * as pieGetterABI from './abis/pieGetterABI.json';
@@ -21,6 +22,7 @@ import { PieDocument, PieEntity } from './entities/pie.entity';
 
 const EVERY_HOUR = 1000 * 60 * 60;
 const EVERY_MINUTE = 1000 * 60;
+const DOUGH_ADDRESS = '0xad32a8e6220741182940c5abf610bde99e737b2d';
 
 @Injectable()
 @Console()
@@ -76,6 +78,13 @@ export class PiesService {
       coingecko_id: 'piedao-defi-large-cap',
     },
     {
+      symbol: 'DEFI+L',
+      name: 'PieDAO DEFI Large Cap',
+      address: '0x78f225869c08d478c34e5f645d07a87d3fe8eb78',
+      history: [],
+      coingecko_id: 'piedao-defi-large-cap',
+    },
+    {
       symbol: 'USD++',
       name: 'USD Index Pie',
       address: '0x9a48bd0ec040ea4f1d3147c025cd4076a2e71e3e',
@@ -95,6 +104,7 @@ export class PiesService {
 
   constructor(
     private httpService: HttpService,
+    private stakingService: StakingService,
     @InjectModel(PieEntity.name) private pieModel: Model<PieDocument>,
     @InjectModel(PieHistoryEntity.name)
     private pieHistoryModel: Model<PieHistoryDocument>,
@@ -274,6 +284,15 @@ export class PiesService {
         reject(error);
       }
     });
+  }
+
+  async getSliceDoughRatio(): Promise<number> {
+    const sliceBreakdown = await this.stakingService.getSliceBreakdown();
+    const url = `https://api.coingecko.com/api/v3/simple/token_price/ethereum?contract_addresses=${DOUGH_ADDRESS}&vs_currencies=usd`;
+    const response = await this.httpService.get(url).toPromise();
+    const sliceNav = sliceBreakdown.nav;
+    const doughPrice = response.data[DOUGH_ADDRESS].usd;
+    return sliceNav / doughPrice;
   }
 
   getCgCoin(
